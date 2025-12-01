@@ -22,7 +22,7 @@ Expected CSV: `aviator_data.csv` with columns:
 	```
 4. Optional flags:
 	```bash
-	python aviator_prediction.py --data aviator_data.csv --test-size 0.3 --seed 123 --player-id 1001 --bet-amount 50
+	python aviator_prediction.py --data aviator_data.csv --test-size 0.3 --seed 123 --player-id 1001 --bet-amount 50 --output metrics.json --report report.txt
 	```
 
 ### Model & Metrics
@@ -46,5 +46,6 @@ Use your own `aviator_data.csv` for real runs.
 ### Development
 - Tests: `pytest`
 - CI: GitHub Actions runs the script and tests on every PR/push.
+ - Feature scaling is enabled by default; disable with `--no-scale`.
 
 
