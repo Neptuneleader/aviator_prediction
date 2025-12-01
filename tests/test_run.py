@@ -37,6 +37,8 @@ def test_model_save_and_predict():
             sample,
             "--save-model",
             model_path,
+            "--test-size",
+            "0.5",
             "--seed",
             "0",
         ],
