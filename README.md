@@ -1,38 +1,64 @@
-import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
+## Aviator Prediction
 
-# Step 1: Collect historical data of Aviator game outcomes
-# This can be done by scraping the casino's website or by accessing their API
-# For example, let's assume we have a CSV file called 'aviator_data.csv' with the following columns:
-# 'PlayerID', 'BetAmount', 'WinAmount', 'Result'
-data = pd.read_csv('aviator_data.csv')
+This repository contains a minimal example for training and evaluating a simple model using historical Aviator outcomes from a CSV file.
 
-# Step 2: Preprocess the data
-# Convert categorical variables to numerical
-data['Result'] = data['Result'].map({'Win': 1, 'Loss': 0})
+![CI](https://github.com/lunifermoon89-ux/aviator_prediction/actions/workflows/ci.yml/badge.svg)
 
-# Split the data into features (X) and target (y)
-X = data[['PlayerID', 'BetAmount']]
-y = data['Result']
+### Data
+Expected CSV: `aviator_data.csv` with columns:
+- `PlayerID`, `BetAmount`, `WinAmount`, `Result`
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+`Result` should be categorical: `Win` or `Loss`.
 
-# Step 3: Train a linear regression model
-model = LinearRegression()
-model.fit(X_train, y_train)
+### Quick Start
+1. Create or place `aviator_data.csv` in the repo root (see sample below).
+2. Install requirements:
+	```bash
+	pip install -r requirements.txt
+	```
+3. Run the script:
+	```bash
+	python aviator_prediction.py --data aviator_data.csv
+	```
+4. Optional flags:
+	```bash
+	python aviator_prediction.py --data aviator_data.csv --test-size 0.3 --seed 123 --player-id 1001 --bet-amount 50 --output metrics.json --report report.txt
+	```
+5. Choose features and save the model:
+	```bash
+	python aviator_prediction.py --data aviator_data.csv --features PlayerID BetAmount --save-model model.joblib
+	```
+6. Predict from a saved model:
+	```bash
+	python aviator_prediction.py --data aviator_data.csv --predict-artifact model.joblib --player-id 1001 --bet-amount 50
+	```
+7. Use SVM and save a confusion matrix image:
+	```bash
+	python aviator_prediction.py --data aviator_data.csv --model svm --cm-png cm.png
+	```
 
-# Step 4: Evaluate the model
-y_pred = model.predict(X_test)
-mse = mean_squared_error(y_test, y_pred)
-print(f"Mean Squared Error: {mse}")
+### Model & Metrics
+- Converts `Result` to 1/0 and trains a `LogisticRegression` classifier.
+- Prints `Accuracy` and `ROC-AUC` on a test split, plus Confusion Matrix and Classification Report.
+- Outputs predicted win probability for a sample player (`PlayerID=1234`, `BetAmount=100`).
+- Saves metrics to `metrics.json` for downstream use.
 
-# Step 5: Make predictions for new data
-# Assuming we have a new player with ID 1234 and bet amount of 100
-new_player = pd.DataFrame({'PlayerID': [1234], 'BetAmount': [100]})
-prediction = model.predict(new_player)
-print(f"Predicted probability of winning: {prediction[0]:.2f}")
+### Sample CSV
+`sample_aviator_data.csv` example:
+```csv
+PlayerID,BetAmount,WinAmount,Result
+1001,50,0,Loss
+1002,20,40,Win
+1003,100,0,Loss
+1004,10,18,Win
+```
+
+Use your own `aviator_data.csv` for real runs.
+
+### Development
+- Tests: `pytest`
+- CI: GitHub Actions runs the script and tests on every PR/push.
+ - Feature scaling is enabled by default; disable with `--no-scale`.
+ - Metrics are saved to `metrics.json` (configurable via `--output`), and a text report to `report.txt` (via `--report`).
+
 

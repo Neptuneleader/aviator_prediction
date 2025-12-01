@@ -1,0 +1,5 @@
+PlayerID,BetAmount,WinAmount,Result
+1001,50,0,Loss
+1002,20,40,Win
+1003,100,0,Loss
+1004,10,18,Win
