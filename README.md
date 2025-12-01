@@ -32,6 +32,10 @@ Expected CSV: `aviator_data.csv` with columns:
 	```bash
 	python aviator_prediction.py --data aviator_data.csv --predict-artifact model.joblib --player-id 1001 --bet-amount 50
 	```
+7. Use SVM and save a confusion matrix image:
+	```bash
+	python aviator_prediction.py --data aviator_data.csv --model svm --cm-png cm.png
+	```
 
 ### Model & Metrics
 - Converts `Result` to 1/0 and trains a `LogisticRegression` classifier.

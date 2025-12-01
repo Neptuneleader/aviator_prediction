@@ -4,9 +4,12 @@ import json
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, classification_report
 from sklearn.preprocessing import StandardScaler
 from joblib import dump, load
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 REQUIRED_COLUMNS = {"PlayerID", "BetAmount", "WinAmount", "Result"}
@@ -44,6 +47,9 @@ def train_and_evaluate(
     report_output: str | None = "report.txt",
     features: list[str] | None = None,
     save_model: str | None = None,
+    model_type: str = "logistic",
+    kfold: int | None = None,
+    cm_png: str | None = None,
 ):
     df = load_data(data_path)
 
@@ -67,14 +73,22 @@ def train_and_evaluate(
         X_train = scaler.fit_transform(X_train)
         X_test = scaler.transform(X_test)
 
-    model = LogisticRegression(max_iter=1000)
+    if model_type == "logistic":
+        model = LogisticRegression(max_iter=1000)
+        proba_supported = True
+    elif model_type == "svm":
+        model = SVC(kernel="rbf", probability=True)
+        proba_supported = True
+    else:
+        print(f"Unsupported model_type: {model_type}. Use 'logistic' or 'svm'.")
+        sys.exit(1)
     model.fit(X_train, y_train)
 
     y_pred = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]
+    y_proba = model.predict_proba(X_test)[:, 1] if proba_supported else None
     acc = accuracy_score(y_test, y_pred)
     try:
-        auc = roc_auc_score(y_test, y_proba)
+        auc = roc_auc_score(y_test, y_proba) if y_proba is not None else float('nan')
     except ValueError:
         auc = float('nan')
     print(f"Accuracy: {acc:.3f}")
@@ -85,9 +99,26 @@ def train_and_evaluate(
     print("Classification Report:")
     print(classification_report(y_test, y_pred, digits=3))
 
+    if cm_png:
+        try:
+            fig, ax = plt.subplots(figsize=(4, 4))
+            ax.imshow(cm, cmap="Blues")
+            ax.set_title("Confusion Matrix")
+            ax.set_xlabel("Predicted")
+            ax.set_ylabel("Actual")
+            for (i, j), v in np.ndenumerate(cm):
+                ax.text(j, i, str(v), ha="center", va="center")
+            fig.tight_layout()
+            fig.savefig(cm_png)
+            plt.close(fig)
+            print(f"Saved confusion matrix image to {cm_png}")
+        except Exception as e:
+            print(f"Failed to save confusion matrix PNG: {e}")
+
     new_player = pd.DataFrame({"PlayerID": [player_id], "BetAmount": [bet_amount]})
-    win_proba = model.predict_proba(new_player)[:, 1]
-    print(f"Predicted probability of winning: {win_proba[0]:.2f}")
+    win_proba = model.predict_proba(new_player)[:, 1] if proba_supported else None
+    if win_proba is not None:
+        print(f"Predicted probability of winning: {win_proba[0]:.2f}")
 
     metrics = {"accuracy": float(acc), "roc_auc": float(auc)}
     if metrics_output:
@@ -115,6 +146,7 @@ def train_and_evaluate(
                 "model": model,
                 "features": features,
                 "scaler": scaler if scale_features else None,
+                "model_type": model_type,
             }, save_model)
             print(f"Saved model artifact to {save_model}")
         except Exception as e:
@@ -133,6 +165,7 @@ def predict_from_artifact(artifact_path: str, player_id: int, bet_amount: float)
     model = bundle.get("model")
     features = bundle.get("features")
     scaler = bundle.get("scaler")
+    model_type = bundle.get("model_type", "logistic")
 
     if not model or not features:
         print("Artifact missing model or features.")
@@ -162,6 +195,9 @@ if __name__ == "__main__":
     parser.add_argument("--features", nargs="*", default=None, help="Feature columns to use (default: PlayerID BetAmount)")
     parser.add_argument("--save-model", default=None, help="Path to save trained model artifact (joblib)")
     parser.add_argument("--predict-artifact", default=None, help="Path to a saved model to predict with")
+    parser.add_argument("--model", choices=["logistic", "svm"], default="logistic", help="Model type to train")
+    parser.add_argument("--kfold", type=int, default=None, help="Stratified K-folds (prints average metrics)")
+    parser.add_argument("--cm-png", default=None, help="Path to save confusion matrix PNG")
     args = parser.parse_args()
     if args.predict_artifact:
         proba = predict_from_artifact(args.predict_artifact, args.player_id, args.bet_amount)
@@ -180,4 +216,7 @@ if __name__ == "__main__":
         report_output=(args.report or None),
         features=args.features,
         save_model=args.save_model,
+        model_type=args.model,
+        kfold=args.kfold,
+        cm_png=args.cm_png,
     )
