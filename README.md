@@ -24,6 +24,14 @@ Expected CSV: `aviator_data.csv` with columns:
 	```bash
 	python aviator_prediction.py --data aviator_data.csv --test-size 0.3 --seed 123 --player-id 1001 --bet-amount 50 --output metrics.json --report report.txt
 	```
+5. Choose features and save the model:
+	```bash
+	python aviator_prediction.py --data aviator_data.csv --features PlayerID BetAmount --save-model model.joblib
+	```
+6. Predict from a saved model:
+	```bash
+	python aviator_prediction.py --data aviator_data.csv --predict-artifact model.joblib --player-id 1001 --bet-amount 50
+	```
 
 ### Model & Metrics
 - Converts `Result` to 1/0 and trains a `LogisticRegression` classifier.
@@ -47,5 +55,6 @@ Use your own `aviator_data.csv` for real runs.
 - Tests: `pytest`
 - CI: GitHub Actions runs the script and tests on every PR/push.
  - Feature scaling is enabled by default; disable with `--no-scale`.
+ - Metrics are saved to `metrics.json` (configurable via `--output`), and a text report to `report.txt` (via `--report`).
 
 

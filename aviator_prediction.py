@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, classification_report
 from sklearn.preprocessing import StandardScaler
+from joblib import dump, load
 
 
 REQUIRED_COLUMNS = {"PlayerID", "BetAmount", "WinAmount", "Result"}
@@ -31,7 +32,7 @@ def load_data(path: str) -> pd.DataFrame:
     return df
 
 
-def main(
+def train_and_evaluate(
     data_path: str,
     test_size: float = 0.2,
     random_state: int = 42,
@@ -41,10 +42,19 @@ def main(
     scale_features: bool = True,
     metrics_output: str = "metrics.json",
     report_output: str | None = "report.txt",
+    features: list[str] | None = None,
+    save_model: str | None = None,
 ):
     df = load_data(data_path)
 
-    X = df[["PlayerID", "BetAmount"]]
+    if not features:
+        features = ["PlayerID", "BetAmount"]
+    for col in features:
+        if col not in df.columns:
+            print(f"Feature '{col}' not found in CSV.")
+            sys.exit(1)
+
+    X = df[features]
     y = df["Result"]
 
     stratify_y = y if stratify else None
@@ -99,6 +109,42 @@ def main(
         except Exception as e:
             print(f"Failed to save report to {report_output}: {e}")
 
+    if save_model:
+        try:
+            dump({
+                "model": model,
+                "features": features,
+                "scaler": scaler if scale_features else None,
+            }, save_model)
+            print(f"Saved model artifact to {save_model}")
+        except Exception as e:
+            print(f"Failed to save model to {save_model}: {e}")
+
+    return model, features, scaler if scale_features else None
+
+
+def predict_from_artifact(artifact_path: str, player_id: int, bet_amount: float) -> float:
+    try:
+        bundle = load(artifact_path)
+    except Exception as e:
+        print(f"Failed to load model artifact from '{artifact_path}': {e}")
+        sys.exit(1)
+
+    model = bundle.get("model")
+    features = bundle.get("features")
+    scaler = bundle.get("scaler")
+
+    if not model or not features:
+        print("Artifact missing model or features.")
+        sys.exit(1)
+
+    row = {"PlayerID": player_id, "BetAmount": bet_amount}
+    X_new = pd.DataFrame([[row.get(col, 0) for col in features]], columns=features)
+    if scaler is not None:
+        X_new = scaler.transform(X_new)
+    proba = model.predict_proba(X_new)[:, 1][0]
+    return float(proba)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Aviator prediction classifier baseline")
@@ -113,8 +159,16 @@ if __name__ == "__main__":
     parser.add_argument("--no-scale", action="store_true", help="Disable feature scaling")
     parser.add_argument("--output", default="metrics.json", help="Path to save metrics JSON (blank to disable)")
     parser.add_argument("--report", default="report.txt", help="Path to save text report (blank to disable)")
+    parser.add_argument("--features", nargs="*", default=None, help="Feature columns to use (default: PlayerID BetAmount)")
+    parser.add_argument("--save-model", default=None, help="Path to save trained model artifact (joblib)")
+    parser.add_argument("--predict-artifact", default=None, help="Path to a saved model to predict with")
     args = parser.parse_args()
-    main(
+    if args.predict_artifact:
+        proba = predict_from_artifact(args.predict_artifact, args.player_id, args.bet_amount)
+        print(f"Predicted probability of winning: {proba:.2f}")
+        sys.exit(0)
+
+    train_and_evaluate(
         data_path=args.data,
         test_size=args.test_size,
         random_state=args.seed,
@@ -124,4 +178,6 @@ if __name__ == "__main__":
         scale_features=not args.no_scale,
         metrics_output=(args.output or None),
         report_output=(args.report or None),
+        features=args.features,
+        save_model=args.save_model,
     )
