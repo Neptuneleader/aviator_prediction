@@ -1,9 +1,10 @@
 import argparse
 import sys
+import json
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, classification_report
 
 
 REQUIRED_COLUMNS = {"PlayerID", "BetAmount", "WinAmount", "Result"}
@@ -59,10 +60,23 @@ def main(
         auc = float('nan')
     print(f"Accuracy: {acc:.3f}")
     print(f"ROC-AUC: {auc:.3f}")
+    cm = confusion_matrix(y_test, y_pred)
+    print("Confusion Matrix:")
+    print(cm)
+    print("Classification Report:")
+    print(classification_report(y_test, y_pred, digits=3))
 
     new_player = pd.DataFrame({"PlayerID": [player_id], "BetAmount": [bet_amount]})
     win_proba = model.predict_proba(new_player)[:, 1]
     print(f"Predicted probability of winning: {win_proba[0]:.2f}")
+
+    metrics = {"accuracy": float(acc), "roc_auc": float(auc)}
+    try:
+        with open("metrics.json", "w", encoding="utf-8") as f:
+            json.dump(metrics, f)
+        print("Saved metrics to metrics.json")
+    except Exception as e:
+        print(f"Failed to save metrics.json: {e}")
 
 
 if __name__ == "__main__":

@@ -27,8 +27,9 @@ Expected CSV: `aviator_data.csv` with columns:
 
 ### Model & Metrics
 - Converts `Result` to 1/0 and trains a `LogisticRegression` classifier.
-- Prints `Accuracy` and `ROC-AUC` on a 20% test split.
+- Prints `Accuracy` and `ROC-AUC` on a test split, plus Confusion Matrix and Classification Report.
 - Outputs predicted win probability for a sample player (`PlayerID=1234`, `BetAmount=100`).
+- Saves metrics to `metrics.json` for downstream use.
 
 ### Sample CSV
 `sample_aviator_data.csv` example:
